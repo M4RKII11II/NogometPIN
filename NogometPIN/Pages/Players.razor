@@ -1,0 +1,153 @@
+﻿@page "/players"
+@inject PlayerService playerService
+<h1>Players</h1>
+<p>This component demonstrates managing a Player list.</p>
+@if (players == null)
+{
+	<p><em>Loading...</em></p>
+}
+else
+{
+	{
+		<button @onclick="@Add" class="btn btn-success">Add</button> 
+		<table class="table">
+			<thead>
+				<tr>
+					<th>ID</th>
+					<th>Name</th>
+					<th>Club</th>
+					<th>Position</th>
+				</tr>
+			</thead>
+			<tbody>
+				@foreach (var item in players)
+				{
+					<tr @onclick="@(()=> Show(item.Id))">
+						<td>@item.Id</td>
+						<td>@item.Name</td>
+						<td>@item.Club</td>
+						<td>@(item.Position != null?item.Position.Name:"N/A")</td>
+					</tr>
+				}
+			</tbody>
+		</table>
+	}
+}
+@if (players != null && mode == MODE.Add)
+{
+	<input placeholder="Name" @bind="@name" />
+	<br />
+	<input placeholder="Club" @bind="@club" />
+	<br />
+	<select @bind="@selectedPositionId">
+		@foreach (var position in positions)
+		{
+			<option value="@position.Id">@position.Name</option>
+		}
+	</select>
+	<button @onclick="@Insert" class="btn btn-warning">Insert</button>
+}
+@if(players != null && mode == MODE.EditDelete)
+{
+	<input type="hidden" @bind="@id" />
+	<br />
+	<input placeholder="Name" @bind="@name" />
+	<br />
+	<input placeholder="Club" @bind="@club" />
+	<br />
+	<select @bind="@selectedPositionId">
+		@foreach (var position in positions)
+		{
+			<option value="@position.Id">@position.Name</option>
+		}
+	</select>
+	<br />
+	<button @onclick="@Update" class="btn btn-primary">Update</button>
+	<span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+	<button @onclick="@Delete" class="btn btn-primary">Delete</button>
+
+}
+@code {
+	Player player;
+
+	string id;
+	string name;
+	string club;
+	int selectedPositionId;
+
+	private enum MODE{None, Add, EditDelete};
+	MODE mode = MODE.None;
+
+
+	List<Player> players;
+	List<Position> positions;
+	protected override async Task OnInitializedAsync()
+	{
+		await Load();
+	}
+	protected async Task Load()
+	{
+
+		players = await playerService.GetPlayersAsync();
+		positions = await playerService.GetPositionsAsync();
+	}
+	protected void Add()
+	{
+		ClearFields();
+		mode = MODE.Add;
+	}
+	protected void ClearFields()
+	{
+		id = string.Empty;
+		name = string.Empty;
+		club = string.Empty;
+		selectedPositionId = 0;
+	}
+	protected async Task Insert()
+	{
+		Player p = new Player()
+			{
+				Id = Guid.NewGuid().ToString(),
+				Name = name,
+				Club = club,
+				PositionId = selectedPositionId
+			};
+		await playerService.InsertPlayerAsync(p);
+		ClearFields();
+		await Load();
+		mode = MODE.None;
+	}
+	protected async Task Show(string playerId)
+	{
+		player = await playerService.GetPlayerByIdAsync(playerId);
+		if (player != null)
+		{
+			id = player.Id;
+			name = player.Name;
+			club = player.Club;
+			selectedPositionId = player.PositionId;
+			mode = MODE.EditDelete;
+		}
+	}
+	protected async Task Update()
+	{
+		Player p = new Player()
+		{
+			Id = id,
+			Name = name,
+			Club = club,
+			PositionId = selectedPositionId
+		};
+		await playerService.UpdatePlayerAsync(id, p);
+		ClearFields();
+		await Load();
+		mode = MODE.None;
+	}
+	protected async Task Delete()
+	{
+		await playerService.DeletePlayerAsync(id);
+		ClearFields();
+		await Load();
+		mode = MODE.None;
+	}
+}
